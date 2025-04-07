@@ -12,6 +12,7 @@ import {
 } from "vscode-languageclient/node"
 import semver = require("semver")
 import fs = require("fs")
+import { wasi_activate } from "./wasi"
 
 export class ProtolsLanguageClient
   extends LanguageClient
@@ -109,6 +110,54 @@ export async function buildLanguageClient(
     } as LanguageClientOptions,
   )
   return c
+}
+
+export async function buildLanguageClientWasi(
+  context: vscode.ExtensionContext,
+): Promise<ProtolsLanguageClient> {
+  const baseClientOptions = buildBaseClientOptions()
+
+  const [serverOptions, clientOptions] = await wasi_activate(
+    context,
+    baseClientOptions,
+    vscode.Uri.file(path.join(__dirname, "protols.wasi.wasm")),
+    "protols",
+    {},
+  )
+
+  const c = new ProtolsLanguageClient(
+    "protobuf",
+    "protols",
+    serverOptions,
+    clientOptions,
+  )
+  return c
+}
+
+const buildBaseClientOptions = (): LanguageClientOptions => {
+  const outputChannel = vscode.window.createOutputChannel(
+    "Protobuf Language Server",
+  )
+  const documentSelector = [
+    { language: "protobuf", scheme: "file" },
+    { language: "protobuf", scheme: "proto" },
+  ]
+  return {
+    initializationOptions: {},
+    documentSelector,
+    synchronize: {
+      fileEvents: vscode.workspace.createFileSystemWatcher("**/*.proto"),
+    },
+    outputChannel,
+    revealOutputChannelOn: RevealOutputChannelOn.Never,
+    connectionOptions: {
+      maxRestartCount: 1,
+    },
+    markdown: {
+      isTrusted: true,
+      supportHtml: true,
+    },
+  } as LanguageClientOptions
 }
 
 const protolsToolInfo = {

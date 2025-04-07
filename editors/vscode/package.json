@@ -157,8 +157,9 @@
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run compile",
+		"vscode:prepublish": "npm run compile && npm run compile:wasi",
 		"compile": "tsc -b",
+		"compile:wasi": "CGO_ENABLED=0 GOOS=wasip1 GOARCH=wasm go build -o ./client/out/protols.wasi.wasm -ldflags '-s -w' ../../cmd/protols",
 		"watch": "tsc -b -w",
 		"lint": "eslint ./client/src --ext .ts,.tsx",
 		"postinstall": "cd client && npm install && cd .."
@@ -177,5 +178,8 @@
 	},
 	"dependencies": {
 		"which": "^4.0.0"
-	}
+	},
+	"extensionDependencies": [
+		"ms-vscode.wasm-wasi-core"
+	]
 }

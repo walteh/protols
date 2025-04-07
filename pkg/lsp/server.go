@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/url"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -267,20 +268,39 @@ func (s *Server) Completion(ctx context.Context, params *protocol.CompletionPara
 	return c.GetCompletions(params)
 }
 
+func clientCallback(f func() error) error {
+	if runtime.GOOS == "wasip1" && runtime.GOARCH == "wasm" {
+		pc, _, _, _ := runtime.Caller(1)
+		name := runtime.FuncForPC(pc).Name()
+		slog.Warn("running client callback in background, errors will not be reported or handled", "name", name)
+		go func() {
+			if err := f(); err != nil {
+				slog.Error("error in client callback", "name", name, "error", err)
+			}
+		}()
+		return nil
+	} else {
+		return f()
+	}
+}
+
 // Initialized implements protocol.Server.
 func (s *Server) Initialized(ctx context.Context, params *protocol.InitializedParams) (err error) {
 	slog.Debug("Initialized")
-	if err := s.client.RegisterCapability(ctx, &protocol.RegistrationParams{
-		Registrations: []protocol.Registration{
-			{
-				ID:     "workspace/didChangeConfiguration",
-				Method: "workspace/didChangeConfiguration",
+	err = clientCallback(func() error {
+		return s.client.RegisterCapability(ctx, &protocol.RegistrationParams{
+			Registrations: []protocol.Registration{
+				{
+					ID:     "workspace/didChangeConfiguration",
+					Method: "workspace/didChangeConfiguration",
+				},
 			},
-		},
-	}); err != nil {
-		return err
+		})
+	})
+	if err != nil {
+		slog.Error("error in client callback", "name", "RegisterCapability", "error", err)
 	}
-	return nil
+	return err
 }
 
 // Definition implements protocol.Server.

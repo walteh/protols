@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 
 	"github.com/kralicky/codegen/cli"
@@ -68,6 +69,9 @@ func AsyncHandler(handler jsonrpc2.Handler) jsonrpc2.Handler {
 	nextRequest := make(chan struct{})
 	close(nextRequest)
 	return func(ctx context.Context, reply jsonrpc2.Replier, req jsonrpc2.Request) error {
+		if runtime.GOOS == "wasip1" && runtime.GOARCH == "wasm" {
+			return handler(ctx, reply, req)
+		}
 		waitForPrevious := nextRequest
 		nextRequest = make(chan struct{})
 		unlockNext := nextRequest

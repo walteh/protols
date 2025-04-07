@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { LanguageClient } from "vscode-languageclient/node"
 import { ASTViewer, fromProtoAstUri } from "./astviewer"
-import { ProtolsLanguageClient, buildLanguageClient } from "./client"
+import { ProtolsLanguageClient, buildLanguageClientWasi } from "./client"
 import { initCommands } from "./commands"
 import { Location } from "vscode-languageserver-types"
 
@@ -10,7 +10,7 @@ let client: LanguageClient
 export async function activate(context: vscode.ExtensionContext) {
   let client: ProtolsLanguageClient
   try {
-    client = await buildLanguageClient(context)
+    client = await buildLanguageClientWasi(context)
   } catch {
     return
   }
